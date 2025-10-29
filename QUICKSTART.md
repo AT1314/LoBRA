@@ -46,11 +46,28 @@ source .venv/bin/activate
 ```
 
 ### Step 2: Add Your Files
-Place files in `vault/`:
+
+**Option A:** Direct placement (markdown, PDFs)
 ```bash
 cp ~/my-notes.md vault/
 cp ~/research.pdf vault/
 ```
+
+**Option B:** Auto-conversion (Word, PowerPoint, Excel, etc.)
+```bash
+# One-time: Install converters
+make install-pipeline
+
+# Daily: Drop files in inbox
+cp ~/presentation.pptx inbox/
+cp ~/notes.docx inbox/
+cp ~/data.xlsx inbox/
+
+# Convert to markdown
+make pipeline
+```
+
+See `PIPELINE.md` for format conversion details.
 
 ### Step 3: Index Your Knowledge
 ```bash
@@ -68,9 +85,13 @@ make ask q="What are the key concepts in my research papers?"
 | Command | Description |
 |---------|-------------|
 | `make deps` | Install/update dependencies |
+| `make install-pipeline` | Install format converters (one-time) |
+| `make pipeline` | Convert files from inbox/ to vault/ |
+| `make watch` | Auto-convert new files continuously |
 | `make ingest` | Index all files in vault/ |
 | `make ask q="..."` | Query your knowledge base |
 | `make clean` | Remove index and logs |
+| `make verify` | Check system health |
 
 ## File Organization Tips
 

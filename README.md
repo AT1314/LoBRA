@@ -5,6 +5,7 @@ A local RAG (Retrieval-Augmented Generation) system that learns from your knowle
 ## Features
 
 - 📚 **Multi-format support**: Markdown (with YAML front-matter), PDFs, text files, code snippets
+- 🔄 **Auto-conversion pipeline**: Convert Word, PowerPoint, Excel, HTML, EPUB, and images to markdown
 - 🔍 **Hybrid retrieval**: Combines BM25 keyword search + semantic embeddings for better accuracy
 - 🎯 **Source citations**: All answers include file path citations
 - 🏠 **Fully local**: Runs entirely on your machine with Ollama (no API keys needed)
@@ -99,6 +100,8 @@ make deps
 
 ### 1. Add Your Knowledge
 
+**Option A: Direct placement** (for markdown, PDFs, text)
+
 Place your files in the `vault/` directory:
 
 ```bash
@@ -109,6 +112,26 @@ vault/
   └── code-snippets/
       └── algorithms.py
 ```
+
+**Option B: Auto-conversion** (for Word, PowerPoint, Excel, etc.)
+
+Use the data pipeline to convert other formats:
+
+```bash
+# One-time setup
+make install-pipeline
+
+# Drop files in inbox/
+cp presentation.pptx inbox/
+cp notes.docx inbox/
+cp data.xlsx inbox/
+
+# Convert to markdown
+make pipeline
+```
+
+Supported formats: `.docx`, `.pptx`, `.xlsx`, `.html`, `.epub`, `.png` (OCR), and more!  
+See `PIPELINE.md` for details.
 
 **Tip**: Use YAML front-matter in Markdown files for better organization:
 
@@ -153,26 +176,29 @@ make ingest  # Re-index (idempotent)
 
 ```
 LoBRA/
-├── vault/              # Your knowledge base (add files here)
-├── brain/              # Processed data (auto-generated)
-├── logs/               # System logs
+├── inbox/                # Drop files here for auto-conversion
+├── vault/                # Your knowledge base (markdown, PDFs)
+├── processed/            # Converted originals (archive)
+├── brain/                # Indexed data (auto-generated)
+├── logs/                 # System logs
 ├── scripts/
-│   ├── ingest.py      # Indexing script
-│   └── query.py       # Query script
-├── config.yaml        # Configuration (optimized for 8GB)
-├── config-8gb.yaml    # 8GB RAM preset
-├── config-16gb.yaml   # 16GB RAM preset
-├── requirements.txt   # Python dependencies
-├── Makefile          # Convenient commands
-├── setup.sh          # Auto-setup script (detects your hardware!)
-├── verify.sh         # Health check script
-├── test-system.sh    # End-to-end test
-├── README.md         # Main documentation
-├── QUICKSTART.md     # Daily usage guide
-├── 8GB-QUICKREF.md   # Quick tips for 8GB systems ⭐
-├── HARDWARE.md       # Hardware optimization guide
-├── INSTALLATION.md   # Installation instructions
-└── CHANGES-FOR-8GB.md # What was optimized for you
+│   ├── ingest.py        # Indexing script
+│   ├── query.py         # Query script
+│   └── preprocess.py    # Format conversion pipeline
+├── config.yaml          # Configuration (optimized for 8GB)
+├── config-8gb.yaml      # 8GB RAM preset
+├── config-16gb.yaml     # 16GB RAM preset
+├── requirements.txt     # Core Python dependencies
+├── requirements-pipeline.txt  # Format converter dependencies
+├── Makefile            # Convenient commands
+├── setup.sh            # Auto-setup script (detects your hardware!)
+├── verify.sh           # Health check script
+├── test-system.sh      # End-to-end test
+├── README.md           # Main documentation
+├── QUICKSTART.md       # Daily usage guide
+├── PIPELINE.md         # Data conversion guide ⭐ NEW
+├── HARDWARE.md         # Hardware optimization guide
+└── INSTALLATION.md     # Installation instructions
 ```
 
 ## Configuration
@@ -210,13 +236,21 @@ cp config-8gb.yaml config.yaml
 ## Available Commands
 
 ```bash
-make setup    # Run complete automated setup (first time only)
-make verify   # Check if all services are running
-make test     # Run end-to-end system test
-make deps     # Install Python dependencies only (after setup.sh)
-make ingest   # Index vault/ contents
-make ask      # Query your knowledge base
-make clean    # Remove index and logs
+# Setup & Health
+make setup              # Run complete automated setup (first time only)
+make verify             # Check if all services are running
+make test               # Run end-to-end system test
+make deps               # Install Python dependencies only (after setup.sh)
+
+# Data Pipeline (convert various formats)
+make install-pipeline   # Install format converters (one-time)
+make pipeline           # Convert files from inbox/ to vault/
+make watch              # Auto-process new files (continuous mode)
+
+# Knowledge Management
+make ingest             # Index vault/ contents
+make ask                # Query your knowledge base
+make clean              # Remove index and logs
 ```
 
 **Note:** For first-time setup, use `./setup.sh` instead of `make deps`. The setup script does everything including dependencies, services, and models. Use `make deps` only when you need to reinstall Python packages after initial setup.

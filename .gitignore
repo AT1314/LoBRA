@@ -29,6 +29,10 @@ brain/*
 !brain/.gitkeep
 logs/*
 !logs/.gitkeep
+inbox/*
+!inbox/.gitkeep
+processed/*
+!processed/.gitkeep
 
 # NLTK data
 nltk_data/
