@@ -1,0 +1,12 @@
+llama-index-core>=0.11.0
+llama-index-llms-ollama>=0.3.0
+llama-index-embeddings-ollama>=0.3.0
+llama-index-vector-stores-qdrant>=0.3.0
+llama-index-retrievers-bm25>=0.3.0
+qdrant-client>=1.10.0
+pypdf>=4.2.0
+python-frontmatter>=1.1.0
+pyyaml>=6.0.2
+nltk>=3.9
+tqdm>=4.66
+

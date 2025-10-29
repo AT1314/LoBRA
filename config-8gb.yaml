@@ -1,0 +1,21 @@
+vault_path: "./vault"
+collection_name: "local_brain"
+qdrant_url: "http://localhost:6333"
+
+# models (via Ollama) - Optimized for 8GB RAM
+# llama3.2:3b is fast, efficient, and surprisingly capable
+chat_model: "llama3.2:3b"
+embed_model: "nomic-embed-text"
+
+# chunking (optimized for 8GB RAM)
+chunk_size: 512      # Smaller chunks = less memory per query
+chunk_overlap: 100   # Reduced overlap
+
+# retrieval (balanced for performance)
+top_k_vector: 5      # Fewer results = faster processing
+top_k_bm25: 5        # Fewer keyword matches
+fusion_k: 6          # Final merged results
+
+# metadata fields you care about in front-matter
+frontmatter_keys: ["title","date","tags","course","project","links","summary"]
+

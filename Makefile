@@ -1,0 +1,38 @@
+VENV=.venv
+PY=$(VENV)/bin/python
+PIP=$(VENV)/bin/pip
+
+.PHONY: venv deps ingest ask clean verify setup test
+
+venv:
+	python3 -m venv $(VENV)
+
+deps: venv
+	$(PIP) install -U pip
+	$(PIP) install -r requirements.txt
+	# NLTK tokenizer (once)
+	@$(PY) - <<'PY'
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+PY
+
+ingest:
+	$(PY) scripts/ingest.py
+
+ask:
+	@q='$(q)'; if [ -z "$$q" ]; then echo 'Usage: make ask q="your question"'; exit 1; fi
+	$(PY) scripts/query.py --q "$$q"
+
+clean:
+	rm -rf brain/* logs/*
+
+verify:
+	@./verify.sh
+
+setup:
+	@./setup.sh
+
+test:
+	@./test-system.sh
+
