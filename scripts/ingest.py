@@ -19,8 +19,12 @@ COLL = CFG["collection_name"]
 QDRANT_URL = CFG["qdrant_url"]
 
 # ---- models
+# Configure embedding model with conservative settings for 8GB RAM
 Settings.embed_model = OllamaEmbedding(
-    model_name=CFG["embed_model"], base_url="http://localhost:11434"
+    model_name=CFG["embed_model"], 
+    base_url="http://localhost:11434",
+    # Reduce internal batching to avoid memory issues
+    embed_batch_size=1,  # Process one embedding at a time
 )
 Settings.llm = Ollama(model=CFG["chat_model"], base_url="http://localhost:11434")
 
@@ -95,15 +99,141 @@ def main():
     # Setup Qdrant
     print("==> Connecting Qdrant…")
     client = QdrantClient(url=QDRANT_URL)
+    
+    # Check if collection exists and might be corrupted
+    collections = client.get_collections().collections
+    collection_exists = any(c.name == COLL for c in collections)
+    
+    # Option to clear corrupted index (uncomment if needed):
+    # if collection_exists:
+    #     print(f"   Clearing existing collection '{COLL}' due to previous errors...")
+    #     client.delete_collection(COLL)
+    #     collection_exists = False
+    
     vstore = QdrantVectorStore(client=client, collection_name=COLL)
     storage = StorageContext.from_defaults(vector_store=vstore)
 
-    # Build / refresh index
+    # Build / refresh index with batching for memory efficiency (important for 8GB RAM)
     print(f"==> Indexing {len(nodes)} chunks into collection '{COLL}'…")
-    _ = VectorStoreIndex(nodes, storage_context=storage)
-
-    print("Done. Indexed chunks:", len(nodes))
+    
+    # For large batches on 8GB systems, process in smaller chunks
+    # This prevents memory exhaustion during embedding generation
+    # Process ONE chunk at a time for maximum stability on 8GB RAM
+    # LlamaIndex may batch internally, so we process sequentially
+    BATCH_SIZE = 1  # One chunk at a time to avoid overwhelming Ollama
+    
+    if len(nodes) > 100:
+        print(f"   Large batch detected ({len(nodes)} chunks). Processing in batches of {BATCH_SIZE}...")
+        try:
+            # Try to load existing index first
+            try:
+                index = VectorStoreIndex.from_vector_store(vstore)
+                print("   Found existing index, adding new chunks...")
+            except:
+                # No existing index, create empty one
+                index = VectorStoreIndex.from_documents([], storage_context=storage)
+                print("   Creating new index...")
+            
+            # Process in batches with retry logic
+            successful_chunks = 0
+            failed_chunks = 0
+            
+            for i in tqdm(range(0, len(nodes), BATCH_SIZE), desc="Batching"):
+                batch = nodes[i:i + BATCH_SIZE]
+                max_retries = 3
+                retry_count = 0
+                success = False
+                
+                while retry_count < max_retries and not success:
+                    try:
+                        # Use insert_nodes for incremental indexing
+                        # Process one chunk at a time with health checks
+                        for node in batch:
+                            # Verify Ollama is still responding before each embedding
+                            try:
+                                import requests
+                                health = requests.get("http://localhost:11434/api/tags", timeout=2)
+                                if health.status_code != 200:
+                                    raise Exception("Ollama health check failed")
+                            except:
+                                print(f"\n   Ollama not responding, waiting 3s...")
+                                time.sleep(3)
+                            
+                            # Insert single node
+                            index.insert_nodes([node])
+                            successful_chunks += 1
+                            time.sleep(0.5)  # Delay between each chunk - increased for stability
+                            
+                            # Every 10 chunks, longer pause to let Ollama recover
+                            if successful_chunks % 10 == 0:
+                                time.sleep(2.0)
+                        
+                        success = True
+                        time.sleep(1.5)  # Longer delay after batch
+                        break
+                    except AttributeError:
+                        # Fallback: rebuild index with accumulated nodes
+                        print(f"\n   Rebuilding index with {successful_chunks + len(batch)} nodes...")
+                        all_nodes_so_far = nodes[:successful_chunks + len(batch)]
+                        try:
+                            index = VectorStoreIndex(all_nodes_so_far, storage_context=storage)
+                            successful_chunks += len(batch)
+                            success = True
+                            break
+                        except Exception as rebuild_error:
+                            print(f"   Rebuild also failed: {rebuild_error}")
+                            failed_chunks += len(batch)
+                            success = False
+                            break
+                    except Exception as e:
+                        retry_count += 1
+                        wait_time = 2 ** retry_count  # Exponential backoff: 2s, 4s, 8s
+                        if retry_count < max_retries:
+                            print(f"\n   Batch {i//BATCH_SIZE + 1} failed (attempt {retry_count}/{max_retries}): {str(e)[:100]}")
+                            print(f"   Waiting {wait_time}s before retry...")
+                            time.sleep(wait_time)
+                            
+                            # Try restarting Ollama connection
+                            try:
+                                Settings.embed_model = OllamaEmbedding(
+                                    model_name=CFG["embed_model"], base_url="http://localhost:11434"
+                                )
+                            except:
+                                pass
+                        else:
+                            print(f"\n   Batch {i//BATCH_SIZE + 1} failed after {max_retries} attempts")
+                            failed_chunks += len(batch)
+                
+                if not success:
+                    time.sleep(2)  # Longer delay after failure
+            
+            print(f"\nDone. Successfully indexed: {successful_chunks} chunks")
+            if failed_chunks > 0:
+                print(f"Failed: {failed_chunks} chunks")
+                print("\nTip: Try processing fewer documents at once, or restart Ollama:")
+                print("  brew services restart ollama")
+        except Exception as e:
+            print(f"\nError during batch indexing: {e}", file=sys.stderr)
+            print("\nTroubleshooting tips:", file=sys.stderr)
+            print("  1. Check Ollama: curl http://localhost:11434/api/tags", file=sys.stderr)
+            print("  2. Restart Ollama: brew services restart ollama", file=sys.stderr)
+            print("  3. Free memory: Close other applications", file=sys.stderr)
+            print("  4. Reduce batch size in ingest.py (currently {BATCH_SIZE})", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Small batch, process all at once
+        try:
+            index = VectorStoreIndex(nodes, storage_context=storage, show_progress=True)
+            print("Done. Indexed chunks:", len(nodes))
+        except Exception as e:
+            print(f"\nError during indexing: {e}", file=sys.stderr)
+            print("\nTroubleshooting tips:", file=sys.stderr)
+            print("  1. Check Ollama: curl http://localhost:11434/api/tags", file=sys.stderr)
+            print("  2. Restart Ollama: brew services restart ollama", file=sys.stderr)
+            print("  3. Verify embedding model: ollama list", file=sys.stderr)
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
+
 

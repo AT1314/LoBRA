@@ -326,6 +326,155 @@ class ImageConverter(FileConverter):
         return md
 
 
+class PDFConverter(FileConverter):
+    """Convert PDF files to markdown using PyPDF"""
+    
+    def __init__(self, config):
+        super().__init__(config)
+        self.supported_formats = ['.pdf']
+        
+    def convert(self, input_path, output_path):
+        try:
+            from pypdf import PdfReader
+            
+            reader = PdfReader(str(input_path))
+            text_parts = []
+            
+            for i, page in enumerate(reader.pages, 1):
+                page_text = page.extract_text()
+                if page_text.strip():
+                    text_parts.append(f"\n## Page {i}\n\n{page_text}")
+            
+            text = "\n".join(text_parts)
+            
+            if not text.strip():
+                log_warning(f"No text extracted from {input_path.name}")
+                return False
+            
+            # Create markdown with metadata
+            metadata = self._create_metadata(input_path, len(reader.pages))
+            markdown = self._format_markdown(metadata, text)
+            
+            output_path.write_text(markdown, encoding='utf-8')
+            return True
+            
+        except ImportError:
+            log_warning("pypdf not installed. Install with: pip install pypdf")
+            return False
+        except Exception as e:
+            log_error(f"Failed to convert {input_path.name}: {e}")
+            return False
+    
+    def _create_metadata(self, input_path, page_count):
+        stat = input_path.stat()
+        return {
+            'title': input_path.stem,
+            'date': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d'),
+            'source': str(input_path),
+            'format': 'PDF Document',
+            'pages': str(page_count),
+            'converted': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+    
+    def _format_markdown(self, metadata, text):
+        md = "---\n"
+        for key, value in metadata.items():
+            md += f"{key}: \"{value}\"\n"
+        md += "---\n\n"
+        md += f"# {metadata['title']}\n\n"
+        if metadata.get('pages'):
+            md += f"**Pages:** {metadata['pages']}\n\n"
+        md += text
+        return md
+
+
+class MarkdownConverter(FileConverter):
+    """Copy Markdown files with metadata front-matter"""
+    
+    def __init__(self, config):
+        super().__init__(config)
+        self.supported_formats = ['.md', '.markdown']
+        
+    def convert(self, input_path, output_path):
+        try:
+            import frontmatter
+            
+            # Try to load existing front-matter
+            try:
+                post = frontmatter.load(input_path)
+                content = post.content
+                existing_meta = dict(post.metadata)
+            except:
+                # No front-matter, use entire file as content
+                content = input_path.read_text(encoding='utf-8')
+                existing_meta = {}
+            
+            # Create/update metadata
+            stat = input_path.stat()
+            metadata = {
+                'title': existing_meta.get('title', input_path.stem),
+                'date': existing_meta.get('date', datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d')),
+                'source': existing_meta.get('source', str(input_path)),
+                'format': 'Markdown',
+                'processed': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            # Merge existing metadata (preserve custom fields)
+            for key, value in existing_meta.items():
+                if key not in ['title', 'date', 'source', 'format']:  # Don't override core fields
+                    metadata[key] = value
+            
+            # Format with front-matter
+            md = "---\n"
+            for key, value in metadata.items():
+                if isinstance(value, list):
+                    md += f"{key}: {value}\n"
+                elif isinstance(value, (int, float, bool)):
+                    md += f"{key}: {value}\n"
+                else:
+                    md += f"{key}: \"{value}\"\n"
+            md += "---\n\n"
+            md += content
+            
+            output_path.write_text(md, encoding='utf-8')
+            return True
+            
+        except ImportError:
+            log_warning("python-frontmatter not installed. Install with: pip install python-frontmatter")
+            # Fallback: simple copy with basic metadata
+            return self._simple_copy(input_path, output_path)
+        except Exception as e:
+            log_error(f"Failed to convert {input_path.name}: {e}")
+            # Fallback: simple copy
+            return self._simple_copy(input_path, output_path)
+    
+    def _simple_copy(self, input_path, output_path):
+        """Fallback: simple copy with basic metadata"""
+        try:
+            content = input_path.read_text(encoding='utf-8')
+            stat = input_path.stat()
+            
+            metadata = {
+                'title': input_path.stem,
+                'date': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d'),
+                'source': str(input_path),
+                'format': 'Markdown',
+                'processed': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            md = "---\n"
+            for key, value in metadata.items():
+                md += f"{key}: \"{value}\"\n"
+            md += "---\n\n"
+            md += content
+            
+            output_path.write_text(md, encoding='utf-8')
+            return True
+        except Exception as e:
+            log_error(f"Failed to copy {input_path.name}: {e}")
+            return False
+
+
 class EPUBConverter(FileConverter):
     """Convert EPUB books to markdown"""
     
@@ -409,7 +558,10 @@ class DataPipeline:
         self.processed_dir = Path("./processed")  # Originals moved here
         
         # Initialize converters
+        # Order matters: Markdown first (fastest check), then others
         self.converters = [
+            MarkdownConverter(self.config),  # Fast copy with metadata
+            PDFConverter(self.config),        # PDF text extraction
             WordConverter(self.config),
             PowerPointConverter(self.config),
             ExcelConverter(self.config),
@@ -466,7 +618,7 @@ class DataPipeline:
     
     def process_all(self):
         """Process all files in inbox"""
-        files = list(self.input_dir.glob("*"))
+        files = list(self.input_dir.rglob("*"))  # rglob to handle subdirectories
         files = [f for f in files if f.is_file() and not f.name.startswith('.')]
         
         if not files:

@@ -2,7 +2,7 @@ VENV=.venv
 PY=$(VENV)/bin/python
 PIP=$(VENV)/bin/pip
 
-.PHONY: venv deps ingest ask clean verify setup test pipeline install-pipeline watch
+.PHONY: venv deps ingest ingest-incremental ask clean verify setup test pipeline install-pipeline watch
 
 venv:
 	python3 -m venv $(VENV)
@@ -11,11 +11,7 @@ deps: venv
 	$(PIP) install -U pip
 	$(PIP) install -r requirements.txt
 	# NLTK tokenizer (once)
-	@$(PY) - <<'PY'
-import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
-PY
+	@$(PY) -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True)"
 
 ingest:
 	$(PY) scripts/ingest.py
@@ -36,11 +32,14 @@ setup:
 test:
 	@./test-system.sh
 
-install-pipeline:
+install-pipeline: venv
 	$(PIP) install -r requirements-pipeline.txt
 
 pipeline:
 	$(PY) scripts/preprocess.py
+
+ingest-incremental:
+	$(PY) scripts/ingest-incremental.py
 
 watch:
 	@echo "Watching inbox/ for new files (Ctrl+C to stop)..."

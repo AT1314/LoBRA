@@ -2,6 +2,8 @@
 # Install with: pip install -r requirements-pipeline.txt
 
 # Document conversion
+pypdf>=4.2.0              # PDF text extraction (already in requirements.txt)
+python-frontmatter>=1.1.0  # Markdown front-matter handling (already in requirements.txt)
 docx2txt>=0.8              # Word documents
 python-pptx>=0.6.21        # PowerPoint presentations
 openpyxl>=3.1.2           # Excel files (xlsx)
