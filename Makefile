@@ -38,6 +38,12 @@ test:
 install-pipeline: venv
 	$(PIP) install -r requirements-pipeline.txt
 
+install-ui: venv
+	$(PIP) install -r requirements-ui.txt
+
+ui:
+	$(PY) -m streamlit run app.py --server.port 8501
+
 pipeline:
 	$(PY) scripts/preprocess.py
 

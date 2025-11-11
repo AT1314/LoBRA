@@ -4,12 +4,13 @@ A local RAG (Retrieval-Augmented Generation) system that learns from your knowle
 
 ## Features
 
+- 🎨 **Beautiful Web UI**: Modern Streamlit interface for easy querying
 - 📚 **Multi-format support**: Markdown (with YAML front-matter), PDFs, text files, code snippets
 - 🔄 **Auto-conversion pipeline**: Convert Word, PowerPoint, Excel, HTML, EPUB, and images to markdown
 - 🔍 **Hybrid retrieval**: Combines BM25 keyword search + semantic embeddings for better accuracy
 - 🎯 **Source citations**: All answers include file path citations
 - 🏠 **Fully local**: Runs entirely on your machine with Ollama (no API keys needed)
-- ⚡ **Fast indexing**: Efficient chunking and vector storage with Qdrant
+- ⚡ **Smart incremental indexing**: Only processes new or modified files
 - 🔒 **Privacy-first**: Your data never leaves your machine
 
 ## 💻 Hardware Requirements
@@ -164,6 +165,16 @@ This will process all files and create a searchable index.
 
 ### 3. Ask Questions
 
+**Option A: Web UI (Recommended)** 🎨
+
+```bash
+make ui
+```
+
+Opens a beautiful web interface at http://localhost:8501
+
+**Option B: Command Line**
+
 ```bash
 make ask q="Summarize my notes on neural networks"
 make ask q="What did I learn about transformers?"
@@ -252,14 +263,19 @@ make verify             # Check if all services are running
 make test               # Run end-to-end system test
 make deps               # Install Python dependencies only (after setup.sh)
 
+# Web UI ⭐ NEW
+make install-ui         # Install UI dependencies (one-time)
+make ui                 # Launch web interface at http://localhost:8501
+
 # Data Pipeline (convert various formats)
 make install-pipeline   # Install format converters (one-time)
 make pipeline           # Convert files from inbox/ to vault/
 make watch              # Auto-process new files (continuous mode)
 
 # Knowledge Management
-make ingest             # Index vault/ contents
-make ask                # Query your knowledge base
+make ingest             # Smart incremental index (only new/modified files)
+make ingest-full        # Full re-index (all files)
+make ask                # Query your knowledge base (CLI)
 make clean              # Remove index and logs
 ```
 
