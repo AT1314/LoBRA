@@ -14,6 +14,9 @@ deps: venv
 	@$(PY) -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True)"
 
 ingest:
+	$(PY) scripts/ingest-smart.py
+
+ingest-full:
 	$(PY) scripts/ingest.py
 
 ask:

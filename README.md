@@ -157,6 +157,11 @@ make ingest
 
 This will process all files and create a searchable index.
 
+**Smart Incremental Indexing**: By default, `make ingest` only processes new or modified files! 🎉
+- First run: Indexes everything
+- Subsequent runs: Only processes changes
+- See `INCREMENTAL-INGEST.md` for details
+
 ### 3. Ask Questions
 
 ```bash
