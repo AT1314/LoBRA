@@ -14,14 +14,15 @@ A local RAG (Retrieval-Augmented Generation) system that learns from your knowle
 
 ## 💻 Hardware Requirements
 
-LoBRA works great on modest hardware! ✨
+LoBRA works great on a wide range of hardware! ✨
 
 - **8GB RAM** (M1 MacBook Air) ✓ Fully supported with optimized config
 - **16GB RAM** - Recommended for larger models
+- **24GB RAM** (M4 Pro) ✓ Current default configuration - best balance
 - **32GB+ RAM** - Can run the most capable models
 
-**Your configuration has been optimized for 8GB M1 systems!**  
-→ Quick tips: `8GB-QUICKREF.md`  
+**Your M4 Pro configuration is optimized for 24GB RAM!**  
+→ Quick tips: See `config-24gb.yaml`  
 → Detailed guide: `HARDWARE.md`
 
 ## Quick Start
@@ -62,8 +63,8 @@ chmod +x setup.sh
 brew install --cask docker
 open -a Docker
 
-# Python 3.10+
-brew install python
+# Python 3.10-3.13 (Python 3.14+ not yet supported)
+brew install python@3.13  # or python@3.12
 
 # Ollama
 brew install ollama
@@ -185,9 +186,10 @@ LoBRA/
 │   ├── ingest.py        # Indexing script
 │   ├── query.py         # Query script
 │   └── preprocess.py    # Format conversion pipeline
-├── config.yaml          # Configuration (optimized for 8GB)
+├── config.yaml          # Configuration (optimized for M4 Pro 24GB)
 ├── config-8gb.yaml      # 8GB RAM preset
 ├── config-16gb.yaml     # 16GB RAM preset
+├── config-24gb.yaml     # 24GB RAM preset
 ├── requirements.txt     # Core Python dependencies
 ├── requirements-pipeline.txt  # Format converter dependencies
 ├── Makefile            # Convenient commands
@@ -203,32 +205,35 @@ LoBRA/
 
 ## Configuration
 
-**Default:** Optimized for 8GB RAM (your system!)
+**Default:** Optimized for M4 Pro 24GB RAM
 
-`config.yaml` is already configured for optimal performance on your M1 MacBook Air:
+`config.yaml` is configured for optimal performance on your M4 Pro system:
 
 ```yaml
-# AI models (memory-efficient)
-chat_model: "llama3.2:3b"       # Fast, only ~2GB RAM
+# AI models (more capable with 24GB RAM)
+chat_model: "llama3.1:8b"       # More capable, ~5-6GB RAM
 embed_model: "nomic-embed-text"  # Lightweight embeddings
 
-# Chunking (optimized for 8GB)
-chunk_size: 512      # Balanced size
-chunk_overlap: 100   # Efficient overlap
+# Chunking (optimized for 24GB)
+chunk_size: 800      # Larger chunks for better context
+chunk_overlap: 150   # Better overlap for continuity
 
-# Retrieval (performance-tuned)
-top_k_vector: 5      # Semantic matches
-top_k_bm25: 5        # Keyword matches
-fusion_k: 6          # Final merged results
+# Retrieval (comprehensive)
+top_k_vector: 8      # More semantic matches
+top_k_bm25: 8        # More keyword matches
+fusion_k: 10         # More comprehensive results
 ```
 
-**Have more RAM?** Use preset configs:
+**Different RAM?** Use preset configs:
 ```bash
-# For 16GB+ systems (better quality, slower)
+# For 8GB systems (faster, lighter)
+cp config-8gb.yaml config.yaml
+
+# For 16GB systems (balanced)
 cp config-16gb.yaml config.yaml
 
-# Back to 8GB optimized (faster)
-cp config-8gb.yaml config.yaml
+# For 24GB+ systems (best quality, current default)
+cp config-24gb.yaml config.yaml
 ```
 
 **Need help?** See `HARDWARE.md` for detailed optimization guides.

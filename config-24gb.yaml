@@ -2,9 +2,10 @@ vault_path: "./vault"
 collection_name: "local_brain"
 qdrant_url: "http://localhost:6333"
 
-# models (via Ollama) - Optimized for M4 Pro 24GB RAM
+# models (via Ollama) - Optimized for 24GB RAM (M4 Pro)
 # With 24GB RAM, you can use larger, more capable models
-# Options: llama3.1:8b (recommended), llama3.2:3b (faster), mistral:7b
+# Recommended: llama3.1:8b for best balance of quality and speed
+# Alternative: mistral:7b, qwen2.5:7b, or even llama3.1:70b if you want maximum quality
 chat_model: "llama3.1:8b"  # More capable model, ~5-6GB RAM usage
 embed_model: "nomic-embed-text"
 

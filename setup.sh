@@ -54,6 +54,37 @@ check_prerequisites() {
         missing_deps+=("python3")
     else
         PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
+        PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f1)
+        PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f2)
+        
+        # Check for Python 3.14+ compatibility issue
+        if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 14 ]; then
+            log_error "Python ${PYTHON_VERSION} is not compatible with llama-index packages"
+            echo ""
+            echo "  llama-index packages use Pydantic v1, which is incompatible with Python 3.14+"
+            echo ""
+            echo "  Solutions:"
+            echo "  1. Use Python 3.13 or 3.12 (recommended):"
+            echo "     brew install python@3.13"
+            echo "     python3.13 -m venv .venv"
+            echo "     source .venv/bin/activate"
+            echo "     ./setup.sh"
+            echo ""
+            echo "  2. Or use pyenv to manage Python versions:"
+            echo "     pyenv install 3.13.0"
+            echo "     pyenv local 3.13.0"
+            echo "     ./setup.sh"
+            echo ""
+            exit 1
+        fi
+        
+        # Check minimum version (3.10+)
+        if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+            log_error "Python ${PYTHON_VERSION} is too old. LoBRA requires Python 3.10 or higher."
+            echo "  Please upgrade Python: brew install python"
+            exit 1
+        fi
+        
         log_success "Python ${PYTHON_VERSION} found"
     fi
     

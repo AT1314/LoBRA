@@ -36,14 +36,26 @@ def main():
     vector_retriever = index.as_retriever(similarity_top_k=CFG["top_k_vector"])
     vnodes = vector_retriever.retrieve(args.q)
 
-    # BM25 retrieval (keyword)
-    bm25 = BM25Retriever.from_defaults(docstore=index.docstore, similarity_top_k=CFG["top_k_bm25"])
-    bnodes = bm25.retrieve(args.q)
+    # BM25 retrieval (keyword) - with fallback
+    bnodes = []
+    try:
+        bm25 = BM25Retriever.from_defaults(docstore=index.docstore, similarity_top_k=CFG["top_k_bm25"])
+        bnodes = bm25.retrieve(args.q)
+    except (ValueError, Exception) as e:
+        # BM25 might fail if docstore is empty or improperly structured
+        # Fall back to vector-only search
+        print(f"Note: BM25 retrieval unavailable, using vector search only", flush=True)
+        pass
 
-    # Fuse results with RRF
+    # Fuse results with RRF (or use vector-only if BM25 failed)
     v_ids = [n.node.node_id for n in vnodes]
     b_ids = [n.node.node_id for n in bnodes]
-    fused_ids = rrf([v_ids, b_ids])[:CFG["fusion_k"]]
+    
+    if b_ids:
+        fused_ids = rrf([v_ids, b_ids])[:CFG["fusion_k"]]
+    else:
+        # No BM25 results, use vector results only
+        fused_ids = v_ids[:CFG["fusion_k"]]
 
     # Keep fused nodes
     id2node = {n.node.node_id: n.node for n in vnodes + bnodes}

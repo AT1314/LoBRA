@@ -40,8 +40,8 @@ If you prefer to install step-by-step or the automatic installation fails:
 brew install --cask docker
 open -a Docker  # Start Docker Desktop
 
-# Python 3.10+
-brew install python
+# Python 3.10-3.13 (Python 3.14+ not yet supported)
+brew install python@3.13  # or python@3.12
 
 # Ollama (local AI models)
 brew install ollama
@@ -50,7 +50,7 @@ brew install ollama
 #### Linux
 
 ```bash
-# Python 3.10+
+# Python 3.10-3.13 (Python 3.14+ not yet supported)
 sudo apt update
 sudo apt install python3 python3-pip python3-venv
 
